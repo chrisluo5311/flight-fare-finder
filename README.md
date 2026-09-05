@@ -18,7 +18,7 @@ Card 3: 「隨時取消 (Cancel anytime)」 — 月訂閱制，不想用隨時�
 
 Footer with copyright 「© 2026 Flight Price Notifier」.
 
-Authentication using Lovable's built-in Supabase-style auth (use whatever auth backend Lovable provides by default — Lovable Cloud is fine for this v1; we'll swap to a user-owned Supabase project in a later step):
+Authentication backed by this project's **own Supabase project** (`eunzvsytymwxiwgdxqyn`), talked to directly from the browser with `@supabase/supabase-js`:
 
 Sign Up page with email + password
 
@@ -48,14 +48,14 @@ Tasteful subtle animations (fade-in on scroll is fine; don't overdo it)
 
 Out of scope for this v1: route-subscription form, target-price input, fare display, payment, custom database tables (do NOT create a subscriptions or profiles table — only use Supabase's default auth.users). Those come in later milestones. Stick to landing page + auth + placeholder dashboard.
 
-This project was built with [Lovable](https://lovable.dev).
+The UI was originally scaffolded with [Lovable](https://lovable.dev); the backend is a self-owned Supabase project.
 
 ## Stack
 
 Plain **Vite + React SPA** (client-side only) — no SSR, no server runtime.
 
 - Routing: [React Router](https://reactrouter.com) (`/`, `/auth`, `/sign-in`, `/sign-up`, `/app`)
-- Auth/data: Supabase (`@supabase/supabase-js`), running entirely in the browser
+- Auth/data: self-owned Supabase project (`@supabase/supabase-js`), running entirely in the browser
 - Styling: Tailwind CSS v4 + shadcn/ui
 - Build: `vite build` → static assets in `dist/`
 
@@ -70,7 +70,15 @@ npm i
 npm run dev
 ```
 
-Copy the `VITE_SUPABASE_*` variables into a local `.env` before running.
+Copy `.env.example` to `.env` (or use the committed `.env`) before running. Only three
+variables matter, all read through `import.meta.env` in
+`src/integrations/supabase/client.ts`:
+
+| Variable | Value |
+| --- | --- |
+| `VITE_SUPABASE_URL` | `https://eunzvsytymwxiwgdxqyn.supabase.co` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_...` (browser-safe, RLS-gated; the current name for what used to be called the anon key) |
+| `VITE_SUPABASE_PROJECT_ID` | `eunzvsytymwxiwgdxqyn` (reference only — also mirrored in `supabase/config.toml`) |
 
 ## Deploying to Vercel
 
@@ -82,6 +90,14 @@ The app is a static SPA, so no serverless functions or adapters are needed.
 | Build command | `npm run build` |
 | Output directory | `dist` |
 | Environment variables | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` |
+
+Set those three in **Vercel → Project → Settings → Environment Variables** for every
+environment you deploy (Production / Preview / Development), then redeploy — Vite inlines
+them at build time, so a redeploy is required for a change to take effect.
+
+Note: Vercel's Supabase marketplace integration also injects `POSTGRES_*`, `SUPABASE_*`
+and `NEXT_PUBLIC_SUPABASE_*` variables. This app is Vite, not Next.js, so none of those
+reach the bundle — only the `VITE_`-prefixed ones above are used.
 
 `vercel.json` adds the SPA fallback rewrite so deep links such as `/app` and
 `/sign-up` are served `index.html` and resolved by React Router on the client.
