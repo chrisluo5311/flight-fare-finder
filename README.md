@@ -50,13 +50,14 @@ Out of scope for this v1: route-subscription form, target-price input, fare disp
 
 This project was built with [Lovable](https://lovable.dev).
 
-## Build with Lovable
+## Stack
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/f4a7a51d-ed19-4c23-98f5-cb66a254257a).
+Plain **Vite + React SPA** (client-side only) — no SSR, no server runtime.
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+- Routing: [React Router](https://reactrouter.com) (`/`, `/auth`, `/sign-in`, `/sign-up`, `/app`)
+- Auth/data: Supabase (`@supabase/supabase-js`), running entirely in the browser
+- Styling: Tailwind CSS v4 + shadcn/ui
+- Build: `vite build` → static assets in `dist/`
 
 ## Development
 
@@ -68,3 +69,20 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+Copy the `VITE_SUPABASE_*` variables into a local `.env` before running.
+
+## Deploying to Vercel
+
+The app is a static SPA, so no serverless functions or adapters are needed.
+
+| Setting | Value |
+| --- | --- |
+| Framework preset | Vite |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Environment variables | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` |
+
+`vercel.json` adds the SPA fallback rewrite so deep links such as `/app` and
+`/sign-up` are served `index.html` and resolved by React Router on the client.
+`public/_redirects` provides the same fallback on Netlify-style hosts.

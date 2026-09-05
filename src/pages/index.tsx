@@ -1,29 +1,23 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { Bell, Plane, XCircle } from "lucide-react";
 
 import { useReveal } from "@/hooks/use-reveal";
+import { usePageMeta } from "@/lib/page-meta";
 
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Flight Price Notifier — 機票降價通知" },
-      {
-        name: "description",
-        content:
-          "設定航線與目標價，機票降價就通知你。Set a route and a target price — we email you when the fare drops.",
-      },
-      { property: "og:title", content: "Flight Price Notifier — 機票降價通知" },
-      {
-        property: "og:description",
-        content:
-          "Set a route and a target price — we email you when the fare drops.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
-  component: Index,
-});
+const PAGE_META = [
+  {
+    name: "description",
+    content:
+      "設定航線與目標價，機票降價就通知你。Set a route and a target price — we email you when the fare drops.",
+  },
+  { property: "og:title", content: "Flight Price Notifier — 機票降價通知" },
+  {
+    property: "og:description",
+    content: "Set a route and a target price — we email you when the fare drops.",
+  },
+  { property: "og:type", content: "website" },
+  { name: "twitter:card", content: "summary_large_image" },
+];
 
 const features = [
   {
@@ -72,9 +66,7 @@ function Hero() {
         <p className="mb-4 rounded-full border border-primary/40 bg-accent px-3 py-1 text-xs font-medium text-primary">
           台北出發 · 熱門航線最低價追蹤
         </p>
-        <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
-          Flight Price Notifier
-        </h1>
+        <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">Flight Price Notifier</h1>
         <p className="mt-6 text-xl font-medium text-foreground sm:text-2xl">
           設定航線與目標價，機票降價就通知你
         </p>
@@ -92,13 +84,7 @@ function Hero() {
   );
 }
 
-function FeatureCard({
-  feature,
-  delay,
-}: {
-  feature: (typeof features)[number];
-  delay: number;
-}) {
+function FeatureCard({ feature, delay }: { feature: (typeof features)[number]; delay: number }) {
   const { ref, props } = useReveal();
   return (
     <article
@@ -117,7 +103,9 @@ function FeatureCard({
   );
 }
 
-function Index() {
+export function IndexPage() {
+  usePageMeta("Flight Price Notifier — 機票降價通知", PAGE_META);
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header />

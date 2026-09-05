@@ -1,25 +1,23 @@
-import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
+import { useNavigate } from "react-router-dom";
 import { LogOut, Plane } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { useAuthenticatedUser } from "@/components/protected-route";
 import { supabase } from "@/integrations/supabase/client";
+import { usePageMeta } from "@/lib/page-meta";
 
-export const Route = createFileRoute("/_authenticated/app")({
-  component: AppPage,
-});
+export function AppPage() {
+  usePageMeta("Dashboard — Flight Price Notifier");
 
-function AppPage() {
-  const { user } = Route.useRouteContext();
+  const user = useAuthenticatedUser();
   const navigate = useNavigate();
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   async function handleSignOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
-    await router.invalidate();
-    navigate({ to: "/auth", replace: true });
+    navigate("/auth", { replace: true });
   }
 
   return (
@@ -41,15 +39,12 @@ function AppPage() {
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-4 py-16 text-center sm:px-6">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Hi {user.email}
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Hi {user.email}</h1>
         <p className="mt-6 max-w-xl text-lg text-muted-foreground">
           你的航線追蹤儀表板即將上線 — 下一個里程碑會加上訂閱航線的功能。
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Your dashboard is coming soon. Route-subscription will be added in the
-          next milestone.
+          Your dashboard is coming soon. Route-subscription will be added in the next milestone.
         </p>
       </main>
     </div>

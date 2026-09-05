@@ -1,38 +1,29 @@
 import { useState } from "react";
-import {
-  createFileRoute,
-  Link,
-  useNavigate,
-  useRouter,
-} from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { Plane } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { usePageMeta } from "@/lib/page-meta";
 
-export const Route = createFileRoute("/auth")({
-  head: () => ({
-    meta: [
-      { title: "Sign in — Flight Price Notifier" },
-      {
-        name: "description",
-        content: "Sign in or create an account to track flight prices.",
-      },
-      { property: "og:title", content: "Sign in — Flight Price Notifier" },
-      {
-        property: "og:description",
-        content: "Sign in or create an account to track flight prices.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: AuthPage,
-});
+const PAGE_META = [
+  {
+    name: "description",
+    content: "Sign in or create an account to track flight prices.",
+  },
+  { property: "og:title", content: "Sign in — Flight Price Notifier" },
+  {
+    property: "og:description",
+    content: "Sign in or create an account to track flight prices.",
+  },
+  { property: "og:type", content: "website" },
+  { name: "twitter:card", content: "summary" },
+];
 
-function AuthPage() {
+export function AuthPage({ initialMode = "signin" }: { initialMode?: "signin" | "signup" }) {
+  usePageMeta("Sign in — Flight Price Notifier", PAGE_META);
+
   const navigate = useNavigate();
-  const router = useRouter();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -54,8 +45,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      await router.invalidate();
-      navigate({ to: "/app" });
+      navigate("/app");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -77,9 +67,7 @@ function AuthPage() {
             {mode === "signin" ? "登入 Sign in" : "註冊 Sign up"}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {mode === "signin"
-              ? "登入以追蹤你的航線票價。"
-              : "建立帳號，開始追蹤機票降價。"}
+            {mode === "signin" ? "登入以追蹤你的航線票價。" : "建立帳號，開始追蹤機票降價。"}
           </p>
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
