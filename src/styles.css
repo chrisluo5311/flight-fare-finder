@@ -32,33 +32,67 @@
   --color-ring: var(--ring);
 }
 
+/*
+ * Theme: data-center cold aisle.
+ * Near-black room, matte-charcoal rack faces, warm amber light spilling out of
+ * the racks, cool white overhead light bars, pale grey raised floor.
+ * Colors only — no layout, markup or behavior depends on anything here.
+ */
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.16 0.02 285);
-  --foreground: oklch(0.97 0.005 285);
-  --card: oklch(0.21 0.025 285);
-  --card-foreground: oklch(0.97 0.005 285);
-  --popover: oklch(0.21 0.025 285);
-  --popover-foreground: oklch(0.97 0.005 285);
-  --primary: oklch(0.62 0.21 295);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.26 0.03 285);
-  --secondary-foreground: oklch(0.97 0.005 285);
-  --muted: oklch(0.26 0.03 285);
-  --muted-foreground: oklch(0.7 0.02 285);
-  --accent: oklch(0.3 0.06 295);
-  --accent-foreground: oklch(0.97 0.005 285);
+
+  /* the room: near-black, very slightly cool */
+  --background: oklch(0.13 0.006 265);
+  --foreground: oklch(0.96 0.003 250);
+
+  /* rack faces: matte charcoal, a touch lighter than the room */
+  --card: oklch(0.185 0.007 265);
+  --card-foreground: oklch(0.96 0.003 250);
+  --popover: oklch(0.185 0.007 265);
+  --popover-foreground: oklch(0.96 0.003 250);
+
+  /* the amber glow from inside the racks — the one saturated color in the room */
+  --primary: oklch(0.79 0.145 73);
+  --primary-foreground: oklch(0.17 0.02 70);
+
+  --secondary: oklch(0.24 0.008 265);
+  --secondary-foreground: oklch(0.96 0.003 250);
+  --muted: oklch(0.24 0.008 265);
+
+  /* raised-floor grey */
+  --muted-foreground: oklch(0.73 0.008 255);
+
+  /* warm shadow the amber light casts on nearby surfaces */
+  --accent: oklch(0.255 0.035 70);
+  --accent-foreground: oklch(0.95 0.02 80);
+
   --destructive: oklch(0.62 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.3 0.03 285);
-  --input: oklch(0.3 0.03 285);
-  --ring: oklch(0.62 0.21 295);
-  --gradient-hero: radial-gradient(
-    ellipse 80% 60% at 50% -10%,
-    oklch(0.62 0.21 295 / 0.35),
-    transparent 70%
-  );
-  --shadow-glow: 0 0 40px oklch(0.62 0.21 295 / 0.25);
+
+  --border: oklch(0.275 0.008 268);
+  --input: oklch(0.275 0.008 268);
+  --ring: oklch(0.79 0.145 73);
+
+  /*
+   * Hero light: a cool white ceiling bar blooming down the aisle, warm amber
+   * ambience rising off the racks under it, and the pale floor catching a
+   * little of both at the bottom.
+   */
+  --gradient-hero:
+    radial-gradient(ellipse 46% 20% at 50% -4%, oklch(0.99 0.008 250 / 0.18), transparent 68%),
+    radial-gradient(ellipse 88% 62% at 50% 4%, oklch(0.79 0.145 73 / 0.16), transparent 72%),
+    linear-gradient(to bottom, transparent 58%, oklch(0.86 0.004 255 / 0.045));
+
+  /* amber spill, the way the rack LEDs bleed onto the aisle */
+  --shadow-glow: 0 0 32px oklch(0.79 0.145 73 / 0.28);
+
+  /* the rack columns receding down the aisle — barely there on purpose */
+  --texture-racks:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 44px,
+      oklch(0.82 0.06 73 / 0.016) 44px 45px
+    );
 }
 
 @utility hero-glow {
@@ -89,6 +123,7 @@
 
   body {
     background-color: var(--color-background);
+    background-image: var(--texture-racks);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
