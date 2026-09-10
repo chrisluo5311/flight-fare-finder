@@ -123,16 +123,18 @@ export function SubscriptionPlans({ email }: { email: string }) {
             <form
               key={plan.name}
               onSubmit={(event) => handleSubmit(plan, event)}
-              className="flex flex-col rounded-xl border border-border bg-card p-5 text-left"
+              className="flex h-full flex-col rounded-xl border border-border bg-card p-5 text-left"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 text-base font-semibold">
-                    <Plane className="size-4 text-primary" aria-hidden />
-                    {plan.label}
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{plan.route}</p>
-                </div>
+              {/* Title owns its whole row, so the 已訂閱 badge can never squeeze
+                  it onto a second line and knock this card out of alignment
+                  with its neighbours. */}
+              <div className="flex items-center gap-2 text-base font-semibold">
+                <Plane className="size-4 shrink-0 text-primary" aria-hidden />
+                <span>{plan.label}</span>
+              </div>
+
+              <div className="mt-1 flex min-h-7 items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">{plan.route}</p>
                 {existing ? (
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                     <Check className="size-3" aria-hidden />
@@ -161,45 +163,54 @@ export function SubscriptionPlans({ email }: { email: string }) {
                 )}
               </p>
 
-              <label
-                className="mt-4 text-xs font-medium text-muted-foreground"
-                htmlFor={`target-${plan.name}`}
-              >
-                {existing ? "新的目標價（NT$）" : "目標價（NT$）"}
-              </label>
-              <input
-                id={`target-${plan.name}`}
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder={String(existing?.target_price ?? plan.hint ?? "")}
-                value={card.value}
-                onChange={(event) =>
-                  patch(plan.name, {
-                    value: event.target.value,
-                    error: null,
-                    justSaved: false,
-                  })
-                }
-                className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
-              />
+              {/* mt-auto pins the input block to the bottom of every card, so the
+                  labels, inputs and buttons line up across the row regardless of
+                  how tall the text above them is. */}
+              <div className="mt-auto pt-4">
+                <label
+                  className="block text-xs font-medium text-muted-foreground"
+                  htmlFor={`target-${plan.name}`}
+                >
+                  {existing ? "新的目標價（NT$）" : "目標價（NT$）"}
+                </label>
+                <input
+                  id={`target-${plan.name}`}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder={String(existing?.target_price ?? plan.hint ?? "")}
+                  value={card.value}
+                  onChange={(event) =>
+                    patch(plan.name, {
+                      value: event.target.value,
+                      error: null,
+                      justSaved: false,
+                    })
+                  }
+                  className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+                />
+                <button
+                  type="submit"
+                  disabled={card.saving || loading}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {card.saving ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden />
+                  ) : (
+                    <BellRing className="size-4" aria-hidden />
+                  )}
+                  {existing ? "更新目標價" : "開始追蹤"}
+                </button>
 
-              <button
-                type="submit"
-                disabled={card.saving || loading}
-                className="mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {card.saving ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden />
-                ) : (
-                  <BellRing className="size-4" aria-hidden />
-                )}
-                {existing ? "更新目標價" : "開始追蹤"}
-              </button>
-
-              {card.error ? <p className="mt-2 text-xs text-destructive">{card.error}</p> : null}
-              {card.justSaved && !card.error ? (
-                <p className="mt-2 text-xs text-primary">已儲存，達標時就會寄信給你。</p>
-              ) : null}
+                {/* Reserved so a status message never changes the card's height
+                    and re-breaks the alignment it was meant to preserve. */}
+                <p className="mt-2 min-h-4 text-xs" aria-live="polite">
+                  {card.error ? (
+                    <span className="text-destructive">{card.error}</span>
+                  ) : card.justSaved ? (
+                    <span className="text-primary">已儲存，達標時就會寄信給你。</span>
+                  ) : null}
+                </p>
+              </div>
             </form>
           );
         })}
