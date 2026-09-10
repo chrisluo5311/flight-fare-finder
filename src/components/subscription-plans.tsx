@@ -12,13 +12,14 @@ type Plan = {
   name: PlanName;
   label: string;
   route: string;
-  /** Rough current cheapest, shown so people pick a sane budget. */
-  hint: number;
+  /** Rough current cheapest, shown so people pick a sane budget. Omit if unknown. */
+  hint?: number;
 };
 
 const PLANS: Plan[] = [
   { name: "tokyo", label: "台北 ✈ 東京", route: "TPE-TYO", hint: 9325 },
   { name: "seoul", label: "台北 ✈ 首爾", route: "TPE-SEL", hint: 5989 },
+  { name: "london", label: "台北 ✈ 倫敦", route: "TPE-LON", hint: 20528 },
 ];
 
 const twd = new Intl.NumberFormat("zh-TW");
@@ -38,6 +39,7 @@ export function SubscriptionPlans({ email }: { email: string }) {
   const [cards, setCards] = useState<Record<PlanName, CardState>>({
     tokyo: emptyCard,
     seoul: emptyCard,
+    london: emptyCard,
   });
 
   const byPlan = useMemo(() => {
@@ -111,7 +113,7 @@ export function SubscriptionPlans({ email }: { email: string }) {
         </p>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {PLANS.map((plan) => {
           const existing = byPlan[plan.name];
           const card = cards[plan.name];
@@ -152,8 +154,10 @@ export function SubscriptionPlans({ email }: { email: string }) {
                       NT${twd.format(existing.target_price)}
                     </strong>
                   </>
-                ) : (
+                ) : plan.hint ? (
                   <>目前最低約 NT${twd.format(plan.hint)}</>
+                ) : (
+                  <>設定一個你願意出手的價格</>
                 )}
               </p>
 
@@ -167,7 +171,7 @@ export function SubscriptionPlans({ email }: { email: string }) {
                 id={`target-${plan.name}`}
                 inputMode="numeric"
                 autoComplete="off"
-                placeholder={String(existing ? existing.target_price : plan.hint)}
+                placeholder={String(existing?.target_price ?? plan.hint ?? "")}
                 value={card.value}
                 onChange={(event) =>
                   patch(plan.name, {

@@ -8,7 +8,7 @@ const API_BASE = (
   import.meta.env["VITE_FLIGHT_API_URL"] ?? "https://nsa7mjdxz7.execute-api.us-east-1.amazonaws.com"
 ).replace(/\/$/, "");
 
-export type PlanName = "tokyo" | "seoul";
+export type PlanName = "tokyo" | "seoul" | "london";
 
 export type Subscription = {
   email: string;
