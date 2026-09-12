@@ -54,7 +54,16 @@ async function readError(response: Response): Promise<string> {
 }
 
 export async function listSubscriptions(email: string): Promise<Subscription[]> {
-  const response = await fetch(`${API_BASE}/subscriptions?email=${encodeURIComponent(email)}`);
+  /*
+   * `cache: "no-store"` is not belt-and-braces here. Back-navigation reuses
+   * the HTTP cache without revalidating, so returning from an abandoned ECPay
+   * checkout re-fetched nothing and rendered the pre-subscribe state until a
+   * manual reload. The Lambda now sends `Cache-Control: no-store` too; this
+   * keeps the client correct regardless of what any layer in between decides.
+   */
+  const response = await fetch(`${API_BASE}/subscriptions?email=${encodeURIComponent(email)}`, {
+    cache: "no-store",
+  });
   if (!response.ok) throw new Error(await readError(response));
   const body = (await response.json()) as { subscriptions?: Subscription[] };
   return body.subscriptions ?? [];
