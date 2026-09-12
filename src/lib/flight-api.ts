@@ -114,3 +114,31 @@ export async function cancelSubscription(input: {
   if (!response.ok) throw new Error(await readError(response));
   return (await response.json()) as Subscription;
 }
+
+/** The cheapest fare the last parser run saw, published per route. */
+export type LatestFare = {
+  route: string;
+  month: string;
+  price: number;
+  currency: string;
+  airline?: string;
+  depart_date?: string;
+  return_date?: string;
+  checked_at?: string;
+  price_usd?: number;
+};
+
+/**
+ * Reference prices for every tracked route, keyed by route ("TPE-TYO").
+ *
+ * Served from what the parser already fetched on its last 30-minute sweep, so
+ * showing it costs no extra travelpayouts quota. A route is simply absent if
+ * nothing has been published for it yet — never guess a number here, a stale
+ * hard-coded hint is worse than showing none.
+ */
+export async function getLatestFares(): Promise<Record<string, LatestFare>> {
+  const response = await fetch(`${API_BASE}/fares`);
+  if (!response.ok) throw new Error(await readError(response));
+  const body = (await response.json()) as { fares?: Record<string, LatestFare> };
+  return body.fares ?? {};
+}

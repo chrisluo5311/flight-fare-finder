@@ -4,10 +4,12 @@ import { BellRing, Check, CreditCard, Loader2, Plane, RotateCcw, X } from "lucid
 
 import {
   cancelSubscription,
+  getLatestFares,
   handOffToCheckout,
   listSubscriptions,
   saveSubscription,
   MONTHLY_PRICE_TWD,
+  type LatestFare,
   type PlanName,
   type Subscription,
 } from "@/lib/flight-api";
@@ -16,14 +18,15 @@ type Plan = {
   name: PlanName;
   label: string;
   route: string;
-  /** Rough current cheapest, shown so people pick a sane budget. Omit if unknown. */
-  hint?: number;
 };
 
+/* No hard-coded price hints. The reference price comes from GET /fares, which
+   serves what the parser actually saw on its last sweep — a stale constant
+   labelled 目前最低價 is worse than showing nothing. */
 const PLANS: Plan[] = [
-  { name: "tokyo", label: "台北 ✈ 東京", route: "TPE-TYO", hint: 9325 },
-  { name: "seoul", label: "台北 ✈ 首爾", route: "TPE-SEL", hint: 5989 },
-  { name: "london", label: "台北 ✈ 倫敦", route: "TPE-LON", hint: 20528 },
+  { name: "tokyo", label: "台北 ✈ 東京", route: "TPE-TYO" },
+  { name: "seoul", label: "台北 ✈ 首爾", route: "TPE-SEL" },
+  { name: "london", label: "台北 ✈ 倫敦", route: "TPE-LON" },
 ];
 
 const twd = new Intl.NumberFormat("zh-TW");
@@ -99,6 +102,7 @@ export function SubscriptionPlans({ email }: { email: string }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [purchase, setPurchase] = useState<string | null>(null);
+  const [fares, setFares] = useState<Record<string, LatestFare>>({});
   const [cards, setCards] = useState<Record<PlanName, CardState>>({
     tokyo: emptyCard,
     seoul: emptyCard,
@@ -116,6 +120,47 @@ export function SubscriptionPlans({ email }: { email: string }) {
     setSubscriptions(rows);
     return rows;
   }, [email]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getLatestFares()
+      .then((f) => {
+        if (!cancelled) setFares(f);
+      })
+      .catch(() => {
+        /* reference prices are decoration — never block the cards on them */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /*
+   * Handing off to ECPay replaces the document, so coming back lands on a
+   * bfcache-restored page whose React state predates the /subscribe call — the
+   * card would still read 開始追蹤 even though a pending_payment row now exists.
+   * Re-read on restore and on tab re-focus so abandoning checkout shows
+   * 未完成付款 immediately instead of needing a manual reload.
+   */
+  useEffect(() => {
+    const reread = () => {
+      refresh().catch(() => {
+        /* a failed background refresh should not clobber what is on screen */
+      });
+    };
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) reread();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") reread();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refresh]);
 
   useEffect(() => {
     let cancelled = false;
@@ -269,6 +314,7 @@ export function SubscriptionPlans({ email }: { email: string }) {
           const card = cards[plan.name];
           const loading = subscriptions === null;
           const status = statusOf(existing);
+          const fare = fares[plan.route];
           const badge = BADGES[status];
           const needsPayment = status === "pending_payment" || status === "legacy";
 
@@ -299,6 +345,16 @@ export function SubscriptionPlans({ email }: { email: string }) {
               </div>
 
               <div className="mt-4 space-y-1 text-sm text-muted-foreground">
+                {fare ? (
+                  <p className="text-xs">
+                    目前最低價約{" "}
+                    <strong className="font-medium text-foreground">
+                      NT${twd.format(fare.price)}
+                    </strong>
+                    （參考）
+                  </p>
+                ) : null}
+
                 {loading ? (
                   <p className="inline-flex items-center gap-2">
                     <Loader2 className="size-3.5 animate-spin" aria-hidden />
@@ -331,8 +387,6 @@ export function SubscriptionPlans({ email }: { email: string }) {
                     ) : null}
                     {status === "expired" ? <p className="text-xs">訂閱已結束。</p> : null}
                   </>
-                ) : plan.hint ? (
-                  <p>目前最低約 NT${twd.format(plan.hint)}</p>
                 ) : (
                   <p>設定一個你願意出手的價格</p>
                 )}
@@ -352,7 +406,7 @@ export function SubscriptionPlans({ email }: { email: string }) {
                   id={`target-${plan.name}`}
                   inputMode="numeric"
                   autoComplete="off"
-                  placeholder={String(existing?.target_price ?? plan.hint ?? "")}
+                  placeholder={String(existing?.target_price ?? fare?.price ?? "")}
                   value={card.value}
                   onChange={(event) =>
                     patch(plan.name, {
