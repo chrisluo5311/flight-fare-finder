@@ -369,9 +369,6 @@ export function SubscriptionPlans({ email }: { email: string }) {
                         NT${twd.format(existing.target_price)}
                       </strong>
                     </p>
-                    {status === "active" && periodEndLabel(existing) ? (
-                      <p className="text-xs">下次扣款 {periodEndLabel(existing)}</p>
-                    ) : null}
                     {status === "cancelled" ? (
                       <p className="text-xs">
                         有效至 {periodEndLabel(existing) ?? "本期結束"}
@@ -449,6 +446,12 @@ export function SubscriptionPlans({ email }: { email: string }) {
                     )}
                     取消訂閱
                   </button>
+                ) : null}
+
+                {existing && status === "active" && periodEndLabel(existing) ? (
+                  <p className="mt-2 text-center text-xs text-muted-foreground">
+                    下次扣款 {periodEndLabel(existing)}
+                  </p>
                 ) : null}
 
                 {/* Reserved so a status message never changes the card's height
