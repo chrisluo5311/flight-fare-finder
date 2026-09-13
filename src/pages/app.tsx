@@ -39,7 +39,7 @@ export function AppPage() {
           </button>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12 sm:px-6">
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Hi {user.email}</h1>
         <p className="mt-2 mb-10 text-muted-foreground">
           選一條航線、設定你的目標價，票價一到就寄信通知你。

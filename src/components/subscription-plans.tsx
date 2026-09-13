@@ -349,10 +349,14 @@ export function SubscriptionPlans({ email }: { email: string }) {
                 {fare ? (
                   <p className="text-xs">
                     目前最低價約{" "}
-                    <strong className="font-medium text-foreground">
-                      NT${twd.format(fare.price)}
-                    </strong>
-                    （參考）
+                    {/* The figure and its qualifier break as one unit, so a
+                        narrow card never strands （參考） on its own line. */}
+                    <span className="whitespace-nowrap">
+                      <strong className="font-medium text-foreground">
+                        NT${twd.format(fare.price)}
+                      </strong>
+                      （參考）
+                    </span>
                   </p>
                 ) : null}
 
