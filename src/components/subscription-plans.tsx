@@ -13,6 +13,7 @@ import {
   type PlanName,
   type Subscription,
 } from "@/lib/flight-api";
+import { periodEndLabel } from "@/lib/datetime";
 
 type Plan = {
   name: PlanName;
@@ -368,12 +369,12 @@ export function SubscriptionPlans({ email }: { email: string }) {
                         NT${twd.format(existing.target_price)}
                       </strong>
                     </p>
-                    {status === "active" && existing.current_period_end_date ? (
-                      <p className="text-xs">下次扣款 {existing.current_period_end_date}</p>
+                    {status === "active" && periodEndLabel(existing) ? (
+                      <p className="text-xs">下次扣款 {periodEndLabel(existing)}</p>
                     ) : null}
                     {status === "cancelled" ? (
                       <p className="text-xs">
-                        有效至 {existing.current_period_end_date ?? "本期結束"}
+                        有效至 {periodEndLabel(existing) ?? "本期結束"}
                         ，在那之前仍會通知你。
                       </p>
                     ) : null}
