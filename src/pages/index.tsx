@@ -120,7 +120,21 @@ export function IndexPage() {
         </section>
       </main>
       <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        © 2026 Flight Price Notifier
+        <div className="space-y-1">
+          <p>
+            客服信箱：
+            <a href="mailto:chrislo5311@gmail.com" className="hover:text-foreground">
+              chrislo5311@gmail.com
+            </a>
+          </p>
+          <p>
+            客服電話：
+            <a href="tel:0937938701" className="hover:text-foreground">
+              0937938701
+            </a>
+          </p>
+          <p className="pt-2">© 2026 Flight Price Notifier</p>
+        </div>
       </footer>
     </div>
   );
