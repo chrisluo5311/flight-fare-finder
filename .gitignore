@@ -29,3 +29,9 @@ dist
 
 # Cowork/Claude session outputs — local only
 Claude outputs/
+
+# Test output
+coverage
+playwright-report
+test-results
+junit.xml

@@ -57,8 +57,6 @@ export function periodEndLabel(subscription: {
   current_period_end_date?: string;
 }): string | null {
   return (
-    taipeiDate(subscription.current_period_end) ??
-    subscription.current_period_end_date ??
-    null
+    taipeiDate(subscription.current_period_end) ?? subscription.current_period_end_date ?? null
   );
 }

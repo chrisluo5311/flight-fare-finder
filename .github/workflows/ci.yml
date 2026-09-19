@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A new push to the same PR cancels the run still in flight — the older result
+# is about to be stale anyway.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Fast feedback: lint, types and the production build in one job. Most
+  # regressions die here, within a minute or so of opening the PR.
+  static:
+    name: Lint, types & build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: ESLint (includes Prettier formatting)
+        run: npm run lint
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+        env:
+          # Vite inlines these. The build must not carry real credentials — the
+          # deployed bundle gets its values from Vercel's own env settings.
+          VITE_SUPABASE_URL: https://ci.supabase.invalid
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci
+          VITE_FLIGHT_API_URL: https://flight-api.invalid
+
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Vitest
+        run: npm run test -- --reporter=default --reporter=junit --outputFile.junit=junit.xml
+
+      - name: Upload test report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: vitest-junit
+          path: junit.xml
+          retention-days: 7
+
+  e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # playwright.config.ts builds the app and serves it with `vite preview`,
+      # so this exercises the same static bundle Vercel will publish.
+      - name: Playwright
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # Single required status check to point branch protection at, so adding or
+  # renaming a job above never means editing the branch rule again.
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    needs: [static, unit, e2e]
+    if: always()
+    steps:
+      - name: Fail if any job did not succeed
+        run: |
+          echo "static=${{ needs.static.result }}"
+          echo "unit=${{ needs.unit.result }}"
+          echo "e2e=${{ needs.e2e.result }}"
+          [ "${{ needs.static.result }}" = "success" ] \
+            && [ "${{ needs.unit.result }}" = "success" ] \
+            && [ "${{ needs.e2e.result }}" = "success" ]
