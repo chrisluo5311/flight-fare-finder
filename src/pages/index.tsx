@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Bell, Plane, XCircle } from "lucide-react";
 
+import { SiteFooter, SiteHeader } from "@/components/site-layout";
 import { useReveal } from "@/hooks/use-reveal";
 import { usePageMeta } from "@/lib/page-meta";
 
@@ -39,25 +40,6 @@ const features = [
     body: "月訂閱制，不想用隨時停，沒有綁約。",
   },
 ];
-
-function Header() {
-  return (
-    <header className="sticky top-0 z-10 border-b border-border/60 bg-background/80 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <Plane className="size-5 text-primary" aria-hidden />
-          <span>Flight Price Notifier</span>
-        </Link>
-        <Link
-          to="/auth"
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:opacity-90 glow-shadow"
-        >
-          Sign in / 登入
-        </Link>
-      </div>
-    </header>
-  );
-}
 
 function Hero() {
   return (
@@ -108,7 +90,7 @@ export function IndexPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header />
+      <SiteHeader />
       <main className="flex-1">
         <Hero />
         <section className="mx-auto max-w-5xl px-4 pb-24 sm:px-6">
@@ -119,23 +101,7 @@ export function IndexPage() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-border py-8 text-center text-sm text-muted-foreground">
-        <div className="space-y-1">
-          <p>
-            客服信箱：
-            <a href="mailto:chrislo5311@gmail.com" className="hover:text-foreground">
-              chrislo5311@gmail.com
-            </a>
-          </p>
-          <p>
-            客服電話：
-            <a href="tel:0937938701" className="hover:text-foreground">
-              0937938701
-            </a>
-          </p>
-          <p className="pt-2">© 2026 Flight Price Notifier</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

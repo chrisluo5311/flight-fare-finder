@@ -8,6 +8,7 @@ import { AppPage } from "@/pages/app";
 import { AuthPage } from "@/pages/auth";
 import { IndexPage } from "@/pages/index";
 import { NotFoundPage } from "@/pages/not-found";
+import { PricingPage } from "@/pages/pricing";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ export function App() {
           <Analytics />
           <Routes>
             <Route path="/" element={<IndexPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/sign-in" element={<AuthPage initialMode="signin" />} />
             <Route path="/sign-up" element={<AuthPage initialMode="signup" />} />
