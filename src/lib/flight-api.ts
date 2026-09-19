@@ -135,6 +135,24 @@ export type LatestFare = {
   return_date?: string;
   checked_at?: string;
   price_usd?: number;
+  /*
+   * Everything below comes from travelpayouts v3/prices_for_dates and is
+   * optional: rows the parser published before it switched endpoints carry
+   * none of it, and the card must simply omit what it was not told.
+   */
+  /** Marketing flight number of the outbound leg, without the airline code. */
+  flight_number?: string;
+  origin_airport?: string;
+  destination_airport?: string;
+  /** Number of stops on the outbound / return leg. 0 means non-stop. */
+  transfers?: number;
+  return_transfers?: number;
+  /** Minutes in the air plus layovers, per leg and for the whole trip. */
+  duration?: number;
+  duration_to?: number;
+  duration_back?: number;
+  /** 0 economy, 1 business, 2 first — the class the parser searched for. */
+  trip_class?: number;
 };
 
 /**

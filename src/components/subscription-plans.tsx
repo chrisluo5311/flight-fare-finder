@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { BellRing, Check, CreditCard, Loader2, Plane, RotateCcw, X } from "lucide-react";
+import {
+  ArrowRight,
+  BellRing,
+  Check,
+  Clock,
+  CreditCard,
+  Loader2,
+  Plane,
+  RotateCcw,
+  X,
+} from "lucide-react";
+
+import { FareFiltersPanel } from "@/components/fare-filters-panel";
 
 import {
   cancelSubscription,
@@ -14,6 +26,16 @@ import {
   type Subscription,
 } from "@/lib/flight-api";
 import { periodEndLabel } from "@/lib/datetime";
+import {
+  airlineName,
+  departureLabel,
+  durationLabel,
+  EMPTY_FILTERS,
+  matchesFilters,
+  stopsLabel,
+  tripClassLabel,
+  type FareFilters,
+} from "@/lib/fare-details";
 
 type Plan = {
   name: PlanName;
@@ -90,6 +112,103 @@ type CardState = {
   notice: string | null;
 };
 
+/* Rows that still get alerted: active, or cancelled but inside the paid period. */
+function isTracking(status: CardStatus): boolean {
+  return status === "active" || status === "cancelled";
+}
+
+function Leg({
+  label,
+  depart,
+  from,
+  to,
+  transfers,
+  minutes,
+}: {
+  label: string;
+  depart?: string | undefined;
+  from?: string | undefined;
+  to?: string | undefined;
+  transfers?: number | undefined;
+  minutes?: number | undefined;
+}) {
+  const when = departureLabel(depart);
+  if (!when) return null;
+  const stops = stopsLabel(transfers);
+  const duration = durationLabel(minutes);
+  return (
+    <div className="grid grid-cols-[2.25rem_1fr] gap-x-2 text-xs">
+      <span className="font-medium text-muted-foreground">{label}</span>
+      <div className="space-y-0.5">
+        <p className="font-medium text-foreground">{when} 出發</p>
+        {from && to ? (
+          <p className="flex items-center gap-1 text-muted-foreground">
+            {from}
+            <ArrowRight className="size-3" aria-hidden />
+            {to}
+          </p>
+        ) : null}
+        {stops || duration ? (
+          <p className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
+            {stops ? (
+              <span className={transfers === 0 ? "text-primary" : undefined}>{stops}</span>
+            ) : null}
+            {duration ? (
+              <span className="inline-flex items-center gap-1">
+                <Clock className="size-3" aria-hidden />
+                {duration}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function FareDetails({ fare }: { fare: LatestFare }) {
+  const airline = airlineName(fare.airline);
+  const flightNo =
+    fare.airline && fare.flight_number ? `${fare.airline}${fare.flight_number}` : null;
+  const cabin = tripClassLabel(fare.trip_class);
+  return (
+    <div className="rounded-lg border border-border bg-background/60 p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-xs text-muted-foreground">目前最低價</p>
+        <p className="text-lg font-semibold tabular-nums text-foreground">
+          NT${twd.format(fare.price)}
+        </p>
+      </div>
+      {airline || flightNo || cabin ? (
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+          {airline ? <span className="font-medium text-foreground">{airline}</span> : null}
+          {flightNo ? <span>{flightNo}</span> : null}
+          {cabin ? <span>· {cabin}</span> : null}
+        </p>
+      ) : null}
+      <div className="mt-2.5 space-y-2 border-t border-border pt-2.5">
+        <Leg
+          label="去程"
+          depart={fare.depart_date}
+          from={fare.origin_airport}
+          to={fare.destination_airport}
+          transfers={fare.transfers}
+          minutes={fare.duration_to}
+        />
+        <Leg
+          label="回程"
+          depart={fare.return_date}
+          from={fare.destination_airport}
+          to={fare.origin_airport}
+          transfers={fare.return_transfers}
+          minutes={fare.duration_back}
+        />
+      </div>
+      <p className="mt-2.5 text-[11px] text-muted-foreground">價格以實際頁面為準</p>
+    </div>
+  );
+}
+
 const emptyCard: CardState = {
   value: "",
   saving: false,
@@ -104,6 +223,7 @@ export function SubscriptionPlans({ email }: { email: string }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [purchase, setPurchase] = useState<string | null>(null);
   const [fares, setFares] = useState<Record<string, LatestFare>>({});
+  const [filters, setFilters] = useState<FareFilters>(EMPTY_FILTERS);
   const [cards, setCards] = useState<Record<PlanName, CardState>>({
     tokyo: emptyCard,
     seoul: emptyCard,
@@ -217,6 +337,17 @@ export function SubscriptionPlans({ email }: { email: string }) {
     };
   }, [purchase, refresh]);
 
+  const publishedFares = useMemo(
+    () => PLANS.map((p) => fares[p.route]).filter((f): f is LatestFare => Boolean(f)),
+    [fares],
+  );
+  const visiblePlans = PLANS.filter((plan) =>
+    matchesFilters(
+      { fare: fares[plan.route], tracking: isTracking(statusOf(byPlan[plan.name])) },
+      filters,
+    ),
+  );
+
   function patch(plan: PlanName, next: Partial<CardState>) {
     setCards((prev) => ({ ...prev, [plan]: { ...prev[plan], ...next } }));
   }
@@ -309,168 +440,180 @@ export function SubscriptionPlans({ email }: { email: string }) {
         </p>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {PLANS.map((plan) => {
-          const existing = byPlan[plan.name];
-          const card = cards[plan.name];
-          const loading = subscriptions === null;
-          const status = statusOf(existing);
-          const fare = fares[plan.route];
-          const badge = BADGES[status];
-          const needsPayment = status === "pending_payment" || status === "legacy";
+      <div className="flex flex-col gap-6 lg:flex-row">
+        <FareFiltersPanel
+          fares={publishedFares}
+          filters={filters}
+          onChange={setFilters}
+          shown={visiblePlans.length}
+          total={PLANS.length}
+        />
 
-          return (
-            <form
-              key={plan.name}
-              onSubmit={(event) => handleSubmit(plan, event)}
-              className="flex h-full flex-col rounded-xl border border-border bg-card p-5 text-left"
-            >
-              {/* Title owns its whole row, so the status badge can never squeeze
+        <div className="min-w-0 flex-1">
+          {visiblePlans.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+              <p>沒有符合篩選條件的航線。</p>
+              <button
+                type="button"
+                onClick={() => setFilters(EMPTY_FILTERS)}
+                className="mt-3 font-medium text-primary hover:underline"
+              >
+                清除篩選
+              </button>
+            </div>
+          ) : null}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {visiblePlans.map((plan) => {
+              const existing = byPlan[plan.name];
+              const card = cards[plan.name];
+              const loading = subscriptions === null;
+              const status = statusOf(existing);
+              const fare = fares[plan.route];
+              const badge = BADGES[status];
+              const needsPayment = status === "pending_payment" || status === "legacy";
+
+              return (
+                <form
+                  key={plan.name}
+                  onSubmit={(event) => handleSubmit(plan, event)}
+                  className="flex h-full flex-col rounded-xl border border-border bg-card p-5 text-left"
+                >
+                  {/* Title owns its whole row, so the status badge can never squeeze
                   it onto a second line and knock this card out of alignment
                   with its neighbours. */}
-              <div className="flex items-center gap-2 text-base font-semibold">
-                <Plane className="size-4 shrink-0 text-primary" aria-hidden />
-                <span>{plan.label}</span>
-              </div>
+                  <div className="flex items-center gap-2 text-base font-semibold">
+                    <Plane className="size-4 shrink-0 text-primary" aria-hidden />
+                    <span>{plan.label}</span>
+                  </div>
 
-              <div className="mt-1 flex min-h-7 items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground">{plan.route}</p>
-                {badge ? (
-                  <span
-                    className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${badge.className}`}
-                  >
-                    {status === "active" ? <Check className="size-3" aria-hidden /> : null}
-                    {badge.text}
-                  </span>
-                ) : null}
-              </div>
+                  <div className="mt-1 flex min-h-7 items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">{plan.route}</p>
+                    {badge ? (
+                      <span
+                        className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${badge.className}`}
+                      >
+                        {status === "active" ? <Check className="size-3" aria-hidden /> : null}
+                        {badge.text}
+                      </span>
+                    ) : null}
+                  </div>
 
-              <div className="mt-4 space-y-1 text-sm text-muted-foreground">
-                {fare ? (
-                  <p className="text-xs">
-                    目前最低價約{" "}
-                    {/* The figure and its qualifier break as one unit, so a
-                        narrow card never strands （參考） on its own line. */}
-                    <span className="whitespace-nowrap">
-                      <strong className="font-medium text-foreground">
-                        NT${twd.format(fare.price)}
-                      </strong>
-                      （參考）
-                    </span>
-                  </p>
-                ) : null}
+                  <div className="mt-4 space-y-1 text-sm text-muted-foreground">
+                    {fare ? <FareDetails fare={fare} /> : null}
 
-                {loading ? (
-                  <p className="inline-flex items-center gap-2">
-                    <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                    載入中…
-                  </p>
-                ) : existing ? (
-                  <>
-                    <p>
-                      目前目標價{" "}
-                      <strong className="font-semibold text-foreground">
-                        NT${twd.format(existing.target_price)}
-                      </strong>
-                    </p>
-                    {status === "cancelled" ? (
-                      <p className="text-xs">
-                        有效至 {periodEndLabel(existing) ?? "本期結束"}
-                        ，在那之前仍會通知你。
+                    {loading ? (
+                      <p className="inline-flex items-center gap-2">
+                        <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                        載入中…
                       </p>
-                    ) : null}
-                    {status === "pending_payment" ? (
-                      <p className="text-xs">尚未完成付款，付款後才會開始通知。</p>
-                    ) : null}
-                    {status === "legacy" ? (
-                      <p className="text-xs">
-                        這筆訂閱建立於付費機制上線前，完成付款後才會繼續通知。
-                      </p>
-                    ) : null}
-                    {status === "expired" ? <p className="text-xs">訂閱已結束。</p> : null}
-                  </>
-                ) : (
-                  <p>設定一個你願意出手的價格</p>
-                )}
-              </div>
+                    ) : existing ? (
+                      <>
+                        <p>
+                          目前目標價{" "}
+                          <strong className="font-semibold text-foreground">
+                            NT${twd.format(existing.target_price)}
+                          </strong>
+                        </p>
+                        {status === "cancelled" ? (
+                          <p className="text-xs">
+                            有效至 {periodEndLabel(existing) ?? "本期結束"}
+                            ，在那之前仍會通知你。
+                          </p>
+                        ) : null}
+                        {status === "pending_payment" ? (
+                          <p className="text-xs">尚未完成付款，付款後才會開始通知。</p>
+                        ) : null}
+                        {status === "legacy" ? (
+                          <p className="text-xs">
+                            這筆訂閱建立於付費機制上線前，完成付款後才會繼續通知。
+                          </p>
+                        ) : null}
+                        {status === "expired" ? <p className="text-xs">訂閱已結束。</p> : null}
+                      </>
+                    ) : (
+                      <p>設定一個你願意出手的價格</p>
+                    )}
+                  </div>
 
-              {/* mt-auto pins the input block to the bottom of every card, so the
+                  {/* mt-auto pins the input block to the bottom of every card, so the
                   labels, inputs and buttons line up across the row regardless of
                   how tall the text above them is. */}
-              <div className="mt-auto pt-4">
-                <label
-                  className="block text-xs font-medium text-muted-foreground"
-                  htmlFor={`target-${plan.name}`}
-                >
-                  {existing ? "新的目標價（NT$）" : "目標價（NT$）"}
-                </label>
-                <input
-                  id={`target-${plan.name}`}
-                  inputMode="numeric"
-                  autoComplete="off"
-                  placeholder={String(existing?.target_price ?? fare?.price ?? "")}
-                  value={card.value}
-                  onChange={(event) =>
-                    patch(plan.name, {
-                      value: event.target.value,
-                      error: null,
-                      notice: null,
-                    })
-                  }
-                  className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
-                />
-                <button
-                  type="submit"
-                  disabled={card.saving || card.cancelling || loading}
-                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-                >
-                  {card.saving ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden />
-                  ) : needsPayment ? (
-                    <CreditCard className="size-4" aria-hidden />
-                  ) : status === "expired" ? (
-                    <RotateCcw className="size-4" aria-hidden />
-                  ) : (
-                    <BellRing className="size-4" aria-hidden />
-                  )}
-                  {actionLabel(status)}
-                </button>
+                  <div className="mt-auto pt-4">
+                    <label
+                      className="block text-xs font-medium text-muted-foreground"
+                      htmlFor={`target-${plan.name}`}
+                    >
+                      {existing ? "新的目標價（NT$）" : "目標價（NT$）"}
+                    </label>
+                    <input
+                      id={`target-${plan.name}`}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder={String(existing?.target_price ?? fare?.price ?? "")}
+                      value={card.value}
+                      onChange={(event) =>
+                        patch(plan.name, {
+                          value: event.target.value,
+                          error: null,
+                          notice: null,
+                        })
+                      }
+                      className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+                    />
+                    <button
+                      type="submit"
+                      disabled={card.saving || card.cancelling || loading}
+                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                    >
+                      {card.saving ? (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      ) : needsPayment ? (
+                        <CreditCard className="size-4" aria-hidden />
+                      ) : status === "expired" ? (
+                        <RotateCcw className="size-4" aria-hidden />
+                      ) : (
+                        <BellRing className="size-4" aria-hidden />
+                      )}
+                      {actionLabel(status)}
+                    </button>
 
-                {status === "active" ? (
-                  <button
-                    type="button"
-                    onClick={() => handleCancel(plan)}
-                    disabled={card.cancelling || card.saving}
-                    className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
-                  >
-                    {card.cancelling ? (
-                      <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                    ) : (
-                      <X className="size-3.5" aria-hidden />
-                    )}
-                    取消訂閱
-                  </button>
-                ) : null}
+                    {status === "active" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleCancel(plan)}
+                        disabled={card.cancelling || card.saving}
+                        className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
+                      >
+                        {card.cancelling ? (
+                          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                        ) : (
+                          <X className="size-3.5" aria-hidden />
+                        )}
+                        取消訂閱
+                      </button>
+                    ) : null}
 
-                {existing && status === "active" && periodEndLabel(existing) ? (
-                  <p className="mt-2 text-center text-xs text-muted-foreground">
-                    下次扣款 {periodEndLabel(existing)}
-                  </p>
-                ) : null}
+                    {existing && status === "active" && periodEndLabel(existing) ? (
+                      <p className="mt-2 text-center text-xs text-muted-foreground">
+                        下次扣款 {periodEndLabel(existing)}
+                      </p>
+                    ) : null}
 
-                {/* Reserved so a status message never changes the card's height
+                    {/* Reserved so a status message never changes the card's height
                     and re-breaks the alignment it was meant to preserve. */}
-                <p className="mt-2 min-h-4 text-xs" aria-live="polite">
-                  {card.error ? (
-                    <span className="text-destructive">{card.error}</span>
-                  ) : card.notice ? (
-                    <span className="text-primary">{card.notice}</span>
-                  ) : null}
-                </p>
-              </div>
-            </form>
-          );
-        })}
+                    <p className="mt-2 min-h-4 text-xs" aria-live="polite">
+                      {card.error ? (
+                        <span className="text-destructive">{card.error}</span>
+                      ) : card.notice ? (
+                        <span className="text-primary">{card.notice}</span>
+                      ) : null}
+                    </p>
+                  </div>
+                </form>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <p className="mt-6 text-xs text-muted-foreground">
