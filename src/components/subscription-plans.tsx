@@ -173,20 +173,14 @@ function FareDetails({ fare }: { fare: LatestFare }) {
   const cabin = tripClassLabel(fare.trip_class);
   return (
     <div className="rounded-lg border border-border bg-background/60 p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-xs text-muted-foreground">目前最低價</p>
-        <p className="text-lg font-semibold tabular-nums text-foreground">
-          NT${twd.format(fare.price)}
-        </p>
-      </div>
       {airline || flightNo || cabin ? (
-        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+        <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
           {airline ? <span className="font-medium text-foreground">{airline}</span> : null}
           {flightNo ? <span>{flightNo}</span> : null}
           {cabin ? <span>· {cabin}</span> : null}
         </p>
       ) : null}
-      <div className="mt-2.5 space-y-2 border-t border-border pt-2.5">
+      <div className="mt-2.5 grid gap-3 border-t border-border pt-2.5 sm:grid-cols-2">
         <Leg
           label="去程"
           depart={fare.depart_date}
@@ -462,7 +456,7 @@ export function SubscriptionPlans({ email }: { email: string }) {
               </button>
             </div>
           ) : null}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="flex flex-col gap-4">
             {visiblePlans.map((plan) => {
               const existing = byPlan[plan.name];
               const card = cards[plan.name];
@@ -476,138 +470,156 @@ export function SubscriptionPlans({ email }: { email: string }) {
                 <form
                   key={plan.name}
                   onSubmit={(event) => handleSubmit(plan, event)}
-                  className="flex h-full flex-col rounded-xl border border-border bg-card p-5 text-left"
+                  className="flex flex-col overflow-hidden rounded-xl border border-border bg-card text-left md:flex-row"
                 >
-                  {/* Title owns its whole row, so the status badge can never squeeze
+                  <div className="min-w-0 flex-1 p-5">
+                    {/* Title owns its whole row, so the status badge can never squeeze
                   it onto a second line and knock this card out of alignment
                   with its neighbours. */}
-                  <div className="flex items-center gap-2 text-base font-semibold">
-                    <Plane className="size-4 shrink-0 text-primary" aria-hidden />
-                    <span>{plan.label}</span>
-                  </div>
+                    <div className="flex items-center gap-2 text-base font-semibold">
+                      <Plane className="size-4 shrink-0 text-primary" aria-hidden />
+                      <span>{plan.label}</span>
+                    </div>
 
-                  <div className="mt-1 flex min-h-7 items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">{plan.route}</p>
-                    {badge ? (
-                      <span
-                        className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${badge.className}`}
-                      >
-                        {status === "active" ? <Check className="size-3" aria-hidden /> : null}
-                        {badge.text}
-                      </span>
-                    ) : null}
-                  </div>
+                    <div className="mt-1 flex min-h-7 items-center justify-between gap-2">
+                      <p className="text-xs text-muted-foreground">{plan.route}</p>
+                      {badge ? (
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${badge.className}`}
+                        >
+                          {status === "active" ? <Check className="size-3" aria-hidden /> : null}
+                          {badge.text}
+                        </span>
+                      ) : null}
+                    </div>
 
-                  <div className="mt-4 space-y-1 text-sm text-muted-foreground">
-                    {fare ? <FareDetails fare={fare} /> : null}
-
-                    {loading ? (
-                      <p className="inline-flex items-center gap-2">
-                        <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                        載入中…
-                      </p>
-                    ) : existing ? (
-                      <>
-                        <p>
-                          目前目標價{" "}
-                          <strong className="font-semibold text-foreground">
-                            NT${twd.format(existing.target_price)}
-                          </strong>
-                        </p>
-                        {status === "cancelled" ? (
-                          <p className="text-xs">
-                            有效至 {periodEndLabel(existing) ?? "本期結束"}
-                            ，在那之前仍會通知你。
-                          </p>
-                        ) : null}
-                        {status === "pending_payment" ? (
-                          <p className="text-xs">尚未完成付款，付款後才會開始通知。</p>
-                        ) : null}
-                        {status === "legacy" ? (
-                          <p className="text-xs">
-                            這筆訂閱建立於付費機制上線前，完成付款後才會繼續通知。
-                          </p>
-                        ) : null}
-                        {status === "expired" ? <p className="text-xs">訂閱已結束。</p> : null}
-                      </>
+                    {fare ? (
+                      <div className="mt-3">
+                        <FareDetails fare={fare} />
+                      </div>
                     ) : (
-                      <p>設定一個你願意出手的價格</p>
+                      <p className="mt-3 text-xs text-muted-foreground">這條航線還沒有最新票價。</p>
                     )}
                   </div>
 
-                  {/* mt-auto pins the input block to the bottom of every card, so the
-                  labels, inputs and buttons line up across the row regardless of
-                  how tall the text above them is. */}
-                  <div className="mt-auto pt-4">
-                    <label
-                      className="block text-xs font-medium text-muted-foreground"
-                      htmlFor={`target-${plan.name}`}
-                    >
-                      {existing ? "新的目標價（NT$）" : "目標價（NT$）"}
-                    </label>
-                    <input
-                      id={`target-${plan.name}`}
-                      inputMode="numeric"
-                      autoComplete="off"
-                      placeholder={String(existing?.target_price ?? fare?.price ?? "")}
-                      value={card.value}
-                      onChange={(event) =>
-                        patch(plan.name, {
-                          value: event.target.value,
-                          error: null,
-                          notice: null,
-                        })
-                      }
-                      className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
-                    />
-                    <button
-                      type="submit"
-                      disabled={card.saving || card.cancelling || loading}
-                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-                    >
-                      {card.saving ? (
-                        <Loader2 className="size-4 animate-spin" aria-hidden />
-                      ) : needsPayment ? (
-                        <CreditCard className="size-4" aria-hidden />
-                      ) : status === "expired" ? (
-                        <RotateCcw className="size-4" aria-hidden />
-                      ) : (
-                        <BellRing className="size-4" aria-hidden />
-                      )}
-                      {actionLabel(status)}
-                    </button>
-
-                    {status === "active" ? (
-                      <button
-                        type="button"
-                        onClick={() => handleCancel(plan)}
-                        disabled={card.cancelling || card.saving}
-                        className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
-                      >
-                        {card.cancelling ? (
+                  {/* Price and actions sit in their own column, like a booking
+                      site's result row: details on the left, the number and
+                      what to do about it on the right. */}
+                  <div className="flex flex-col border-t border-border p-5 md:w-72 md:shrink-0 md:border-t-0 md:border-l">
+                    {fare ? (
+                      <div className="mb-3">
+                        <p className="text-xs text-muted-foreground">目前最低價</p>
+                        <p className="text-2xl font-semibold tabular-nums text-foreground">
+                          NT${twd.format(fare.price)}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      {loading ? (
+                        <p className="inline-flex items-center gap-2">
                           <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                          載入中…
+                        </p>
+                      ) : existing ? (
+                        <>
+                          <p>
+                            目前目標價{" "}
+                            <strong className="font-semibold text-foreground">
+                              NT${twd.format(existing.target_price)}
+                            </strong>
+                          </p>
+                          {status === "cancelled" ? (
+                            <p className="text-xs">
+                              有效至 {periodEndLabel(existing) ?? "本期結束"}
+                              ，在那之前仍會通知你。
+                            </p>
+                          ) : null}
+                          {status === "pending_payment" ? (
+                            <p className="text-xs">尚未完成付款，付款後才會開始通知。</p>
+                          ) : null}
+                          {status === "legacy" ? (
+                            <p className="text-xs">
+                              這筆訂閱建立於付費機制上線前，完成付款後才會繼續通知。
+                            </p>
+                          ) : null}
+                          {status === "expired" ? <p className="text-xs">訂閱已結束。</p> : null}
+                        </>
+                      ) : (
+                        <p>設定一個你願意出手的價格</p>
+                      )}
+                    </div>
+
+                    <div className="mt-auto pt-4">
+                      <label
+                        className="block text-xs font-medium text-muted-foreground"
+                        htmlFor={`target-${plan.name}`}
+                      >
+                        {existing ? "新的目標價（NT$）" : "目標價（NT$）"}
+                      </label>
+                      <input
+                        id={`target-${plan.name}`}
+                        inputMode="numeric"
+                        autoComplete="off"
+                        placeholder={String(existing?.target_price ?? fare?.price ?? "")}
+                        value={card.value}
+                        onChange={(event) =>
+                          patch(plan.name, {
+                            value: event.target.value,
+                            error: null,
+                            notice: null,
+                          })
+                        }
+                        className="mt-1.5 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-primary"
+                      />
+                      <button
+                        type="submit"
+                        disabled={card.saving || card.cancelling || loading}
+                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                      >
+                        {card.saving ? (
+                          <Loader2 className="size-4 animate-spin" aria-hidden />
+                        ) : needsPayment ? (
+                          <CreditCard className="size-4" aria-hidden />
+                        ) : status === "expired" ? (
+                          <RotateCcw className="size-4" aria-hidden />
                         ) : (
-                          <X className="size-3.5" aria-hidden />
+                          <BellRing className="size-4" aria-hidden />
                         )}
-                        取消訂閱
+                        {actionLabel(status)}
                       </button>
-                    ) : null}
 
-                    {existing && status === "active" && periodEndLabel(existing) ? (
-                      <p className="mt-2 text-center text-xs text-muted-foreground">
-                        下次扣款 {periodEndLabel(existing)}
-                      </p>
-                    ) : null}
-
-                    {/* Reserved so a status message never changes the card's height
-                    and re-breaks the alignment it was meant to preserve. */}
-                    <p className="mt-2 min-h-4 text-xs" aria-live="polite">
-                      {card.error ? (
-                        <span className="text-destructive">{card.error}</span>
-                      ) : card.notice ? (
-                        <span className="text-primary">{card.notice}</span>
+                      {status === "active" ? (
+                        <button
+                          type="button"
+                          onClick={() => handleCancel(plan)}
+                          disabled={card.cancelling || card.saving}
+                          className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
+                        >
+                          {card.cancelling ? (
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                          ) : (
+                            <X className="size-3.5" aria-hidden />
+                          )}
+                          取消訂閱
+                        </button>
                       ) : null}
-                    </p>
+
+                      {existing && status === "active" && periodEndLabel(existing) ? (
+                        <p className="mt-2 text-center text-xs text-muted-foreground">
+                          下次扣款 {periodEndLabel(existing)}
+                        </p>
+                      ) : null}
+
+                      {/* Reserved so a status message never changes the card's height
+                    and re-breaks the alignment it was meant to preserve. */}
+                      <p className="mt-2 min-h-4 text-xs" aria-live="polite">
+                        {card.error ? (
+                          <span className="text-destructive">{card.error}</span>
+                        ) : card.notice ? (
+                          <span className="text-primary">{card.notice}</span>
+                        ) : null}
+                      </p>
+                    </div>
                   </div>
                 </form>
               );
